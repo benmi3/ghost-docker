@@ -1,31 +1,37 @@
 ---
 # yaml-language-server: $schema=https://raw.githubusercontent.com/compose-spec/compose-spec/main/schema/compose-spec.json
 services:
-  caddy:
-    image: caddy:2.10.0-alpine@sha256:e2e3a089760c453bc51c4e718342bd7032d6714f15b437db7121bfc2de2654a6
+  traefik:
+    image: traefik:v3.2@sha256:ec1a82940b8e00eaeef33fb4113aa1d1573b2ebb6440e10c023743fe96f08475
     restart: always
     ports:
       - "80:80"
       - "443:443"
+      - "8080:8080"  # Traefik dashboard (optional)
     environment:
       DOMAIN: ${DOMAIN:?DOMAIN environment variable is required}
       ADMIN_DOMAIN: ${ADMIN_DOMAIN:-}
       ACTIVITYPUB_TARGET: ${ACTIVITYPUB_TARGET:-https://ap.ghost.org}
     volumes:
-      - ./caddy:/etc/caddy
-      - caddy_data:/data
-      - caddy_config:/config
+      - ./traefik:/etc/traefik
+      - traefik_data:/data
+      - /var/run/docker.sock:/var/run/docker.sock:ro
     depends_on:
       - ghost
     networks:
       - ghost_network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.traefik.rule=Host(`traefik.${DOMAIN}`)"
+      - "traefik.http.routers.traefik.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.traefik.service=api@internal"
 
   ghost:
     # Do not alter this without updating the Tinybird Sync container as well
     image: ghost:${GHOST_VERSION:-6-alpine}
     restart: always
     expose:
-      - "127.0.0.1:${GHOST_PORT:-2368}:2368"
+      - "2368"
     # This is required to import current config when migrating
     env_file:
       - .env
@@ -59,6 +65,24 @@ services:
         required: false
     networks:
       - ghost_network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.ghost.rule=Host(`${DOMAIN}`)"
+      - "traefik.http.routers.ghost.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.ghost.service=ghost"
+      - "traefik.http.services.ghost.loadbalancer.server.port=2368"
+      # Admin domain routing (if configured)
+      - "traefik.http.routers.ghost-admin.rule=Host(`${ADMIN_DOMAIN}`)"
+      - "traefik.http.routers.ghost-admin.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.ghost-admin.service=ghost"
+      # Security headers
+      - "traefik.http.middlewares.security-headers.headers.stsSeconds=31536000"
+      - "traefik.http.middlewares.security-headers.headers.frameOptions=DENY"
+      - "traefik.http.middlewares.security-headers.headers.contentTypeNosniff=true"
+      - "traefik.http.middlewares.security-headers.headers.browserXssFilter=true"
+      - "traefik.http.middlewares.security-headers.headers.referrerPolicy=strict-origin-when-cross-origin"
+      - "traefik.http.routers.ghost.middlewares=security-headers"
+      - "traefik.http.routers.ghost-admin.middlewares=security-headers"
 
   db:
     image: mysql:8.0.42@sha256:4445b2668d41143cb50e471ee207f8822006249b6859b24f7e12479684def5d9
@@ -100,6 +124,14 @@ services:
     profiles: [analytics]
     networks:
       - ghost_network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.analytics.rule=Host(`${DOMAIN}`) && PathPrefix(`/.ghost/analytics`)"
+      - "traefik.http.routers.analytics.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.analytics.service=analytics"
+      - "traefik.http.services.analytics.loadbalancer.server.port=3000"
+      - "traefik.http.middlewares.analytics-stripprefix.stripprefix.prefixes=/.ghost/analytics"
+      - "traefik.http.routers.analytics.middlewares=analytics-stripprefix"
 
   activitypub:
     image: ghcr.io/tryghost/activitypub:1.1.0@sha256:39c212fe23603b182d68e67d555c6b9b04b1e57459dfc0bef26d6e4980eb04d1
@@ -127,6 +159,12 @@ services:
     profiles: [activitypub]
     networks:
       - ghost_network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.activitypub.rule=Host(`${DOMAIN}`) && (PathPrefix(`/.ghost/activitypub`) || PathPrefix(`/.well-known/webfinger`) || PathPrefix(`/.well-known/nodeinfo`))"
+      - "traefik.http.routers.activitypub.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.activitypub.service=activitypub"
+      - "traefik.http.services.activitypub.loadbalancer.server.port=8080"
 
   # Suporting Services
 
@@ -201,8 +239,7 @@ services:
     restart: no
 
 volumes:
-  caddy_data:
-  caddy_config:
+  traefik_data:
   tinybird_files:
   tinybird_home:
   traffic_analytics_data:

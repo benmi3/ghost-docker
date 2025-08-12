@@ -567,22 +567,23 @@ main() {
     docker compose up ghost -d
     echo "✓ Ghost is running in Docker"
 
-    # Caddy setup
+    # Traefik setup
     echo ""
-    read -rp 'Start Caddy Webserver for automatic HTTPS? This will stop Nginx. (y/n): ' confirm
+    read -rp 'Start Traefik reverse proxy for automatic HTTPS? This will stop Nginx. (y/n): ' confirm
     if [[ "${confirm,,}" == "y" ]]; then
         echo "Stopping Nginx..."
         systemctl stop nginx -q || true
         systemctl disable nginx -q || true
 
-        echo "Starting Caddy..."
-        docker compose up caddy -d
+        echo "Starting Traefik..."
+        docker compose up traefik -d
 
         local domain
         domain=$(grep 'DOMAIN' "${PWD}/.env" | cut -d '=' -f 2-)
         echo ""
-        echo "✓ Caddy Webserver is running!"
+        echo "✓ Traefik reverse proxy is running!"
         echo "✓ Your site is available at: https://${domain}"
+        echo "✓ Traefik dashboard available at: https://traefik.${domain}"
     else
         local ghost_port
         ghost_port=$(grep 'GHOST_PORT' "${PWD}/.env" | cut -d '=' -f 2-)
@@ -614,7 +615,7 @@ main() {
     echo "  Start Ghost:      docker compose up -d"
     echo ""
     echo "TROUBLESHOOTING:"
-    echo "  • If site is unreachable, check: docker compose logs caddy"
+    echo "  • If site is unreachable, check: docker compose logs traefik"
     echo "  • For 502 errors, Ghost may still be starting (check logs)"
     echo "  • Database issues: docker compose logs db"
     echo ""

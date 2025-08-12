@@ -1,0 +1,13 @@
+# This file has been replaced by Traefik configuration
+# See traefik/traefik.yml and traefik/dynamic.yml for the new configuration
+# 
+# The equivalent Traefik configuration is now handled via:
+# 1. Docker labels on services in compose.yml
+# 2. Static configuration in traefik/traefik.yml  
+# 3. Dynamic configuration in traefik/dynamic.yml
+#
+# Key differences from Caddy:
+# - Automatic HTTPS via Let's Encrypt (configured in traefik.yml)
+# - Service discovery via Docker labels
+# - Middleware for security headers, compression, etc.
+# - Dashboard available at traefik.${DOMAIN} (if enabled)

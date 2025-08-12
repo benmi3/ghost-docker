@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a comprehensive Docker Compose setup for running Ghost CMS in production with automatic HTTPS, optional analytics, and ActivityPub support. The repository orchestrates multiple services including Ghost, MySQL, Caddy (reverse proxy), and optional Tinybird analytics and ActivityPub federation.
+This is a comprehensive Docker Compose setup for running Ghost CMS in production with automatic HTTPS, optional analytics, and ActivityPub support. The repository orchestrates multiple services including Ghost, MySQL, Traefik (reverse proxy), and optional Tinybird analytics and ActivityPub federation.
 
 ## Architecture
 
@@ -12,20 +12,20 @@ The project uses Docker Compose to orchestrate these services:
 
 1. **Ghost** - The main CMS application (runs on internal port 2368)
 2. **MySQL** - Database backend with health checks and support for multiple databases
-3. **Caddy** - Reverse proxy handling HTTPS/SSL, routing, and external access
+3. **Traefik** - Reverse proxy handling HTTPS/SSL, routing, and external access
 4. **Traffic Analytics** (optional profile) - Tinybird integration for web analytics
 5. **ActivityPub** (optional profile) - Federated social networking support
 6. **Supporting services** - Tinybird setup tools and ActivityPub migrations
 
-Services communicate internally via Docker networks. Caddy handles all external traffic routing including special paths for analytics (`/_tinybird`) and ActivityPub (`/.well-known/`, `/activitypub/`).
+Services communicate internally via Docker networks. Traefik handles all external traffic routing including special paths for analytics (`/_tinybird`) and ActivityPub (`/.well-known/`, `/activitypub/`).
 
 ## Common Commands
 
 ```bash
 # Core operations
-docker compose up -d                    # Start Ghost + MySQL + Caddy
+docker compose up -d                    # Start Ghost + MySQL + Traefik
 docker compose down                     # Stop all services
-docker compose logs -f [service]        # View logs (e.g., ghost, mysql, caddy)
+docker compose logs -f [service]        # View logs (e.g., ghost, mysql, traefik)
 docker compose ps                       # Check service status
 docker compose pull                     # Update all images
 docker compose restart ghost            # Restart just Ghost
@@ -57,7 +57,8 @@ All configuration is done via environment variables. Key patterns:
 ### Key configuration files:
 - `.env` - Main environment configuration (create from `.env.example`)
 - `compose.yml` - Docker Compose service definitions
-- `Caddyfile` - Reverse proxy routing configuration
+- `traefik/traefik.yml` - Reverse proxy static configuration
+- `traefik/dynamic.yml` - Reverse proxy dynamic configuration
 - `mysql-init/create-multiple-databases.sh` - MySQL multi-database initialization
 
 ## Migration from Ghost CLI
@@ -81,14 +82,14 @@ The repository includes comprehensive migration tools:
 1. Clone repository and copy `.env.example` to `.env`
 2. Configure required environment variables (domain, passwords)
 3. Run `docker compose up -d` to start services
-4. Access Ghost at `https://DOMAIN` (Caddy handles SSL automatically)
+4. Access Ghost at `https://DOMAIN` (Traefik handles SSL automatically)
 5. Monitor logs with `docker compose logs -f ghost`
 
 For analytics setup, see `TINYBIRD.md` for detailed instructions.
 
 ## Important Notes
 
-- Ghost runs internally on port 2368; Caddy exposes it on 80/443
+- Ghost runs internally on port 2368; Traefik exposes it on 80/443
 - Email configuration is critical even without newsletter features (used for admin notifications)
 - MySQL health checks ensure database is ready before Ghost starts
 - The compose file uses yaml-language-server schema for IDE completion support

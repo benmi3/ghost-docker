@@ -7,7 +7,7 @@ cat << 'EOF'
 
 COMMON COMMANDS:
   docker compose logs -f ghost      # View real-time logs
-  docker compose logs -f caddy      # View Caddy webserver logs
+  docker compose logs -f traefik    # View Traefik reverse proxy logs
   docker compose ps                 # Check service status
   docker compose down               # Stop all services
   docker compose up -d              # Start all services
